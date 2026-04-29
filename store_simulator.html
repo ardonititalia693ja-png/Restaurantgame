@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Store Simulator</title>
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:#1b1f2a;
+  color:white;
+}
+header{
+  background:#111827;
+  padding:12px;
+  text-align:center;
+  font-size:20px;
+}
+#container{
+  display:flex;
+  height:100vh;
+}
+#left{
+  width:300px;
+  background:#0f172a;
+  padding:10px;
+  overflow:auto;
+}
+#center{
+  flex:1;
+  position:relative;
+  background:#14532d;
+  overflow:hidden;
+}
+.panel{
+  background:#1e293b;
+  padding:10px;
+  margin-bottom:10px;
+  border-radius:10px;
+}
+button{
+  padding:6px;
+  margin:4px;
+  cursor:pointer;
+  border:none;
+  border-radius:6px;
+}
+.shelf{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  padding:10px;
+}
+.item{
+  background:#fbbf24;
+  color:black;
+  padding:8px;
+  border-radius:8px;
+  width:120px;
+  text-align:center;
+}
+.customer{
+  position:absolute;
+  width:160px;
+  background:white;
+  color:black;
+  padding:6px;
+  border-radius:10px;
+  font-size:12px;
+}
+</style>
+</head>
+<body>
+
+<header id="storeTitle">🏪 Store Simulator</header>
+
+<div id="container">
+
+<div id="left">
+
+  <div class="panel">
+    🌐 <b>Language</b><br>
+    <button onclick="setLang('en')">English</button>
+    <button onclick="setLang('sq')">Shqip</button>
+    <button onclick="setLang('it')">Italiano</button>
+    <button onclick="setLang('de')">Deutsch</button>
+    <button onclick="setLang('es')">Español</button>
+  </div>
+
+  <div class="panel">
+    💰 Money: $<span id="money">100</span>
+  </div>
+
+  <div class="panel">
+    <b>📦 Buy Stock</b><br>
+    <div id="buyButtons"></div>
+  </div>
+
+  <div class="panel">
+    <b>📊 Inventory</b>
+    <div id="inventory"></div>
+  </div>
+
+</div>
+
+<div id="center">
+  <h3 style="text-align:center">Your Store</h3>
+  <div id="shelves" class="shelf"></div>
+</div>
+
+</div>
+
+<script>
+let money=100;
+let lang="en";
+
+// SIMPLIFIED ITEMS (5–10 items)
+let items=[
+"apple","water","eggs","bread","coca_cola","fanta","milk","fish"
+];
+
+// TRANSLATIONS
+const itemNames={
+  en:{apple:"Apple",water:"Water",eggs:"Eggs",bread:"Bread",coca_cola:"Coca-Cola",fanta:"Fanta",milk:"Milk",fish:"Fish"},
+  sq:{apple:"Mollë",water:"Ujë",eggs:"Vezë",bread:"Bukë",coca_cola:"Coca-Cola",fanta:"Fanta",milk:"Qumësht",fish:"Peshk"},
+  it:{apple:"Mela",water:"Acqua",eggs:"Uova",bread:"Pane",coca_cola:"Coca-Cola",fanta:"Fanta",milk:"Latte",fish:"Pesce"},
+  de:{apple:"Apfel",water:"Wasser",eggs:"Eier",bread:"Brot",coca_cola:"Coca-Cola",fanta:"Fanta",milk:"Milch",fish:"Fisch"},
+  es:{apple:"Manzana",water:"Agua",eggs:"Huevos",bread:"Pan",coca_cola:"Coca-Cola",fanta:"Fanta",milk:"Leche",fish:"Pescado"}
+};
+
+let inventory={};
+let sellPrice={};
+let buyCost={};
+
+items.forEach(i=>{
+  inventory[i]=0;
+  buyCost[i]=Math.floor(Math.random()*5)+1;
+  sellPrice[i]=buyCost[i]+Math.floor(Math.random()*5)+2;
+});
+
+function setLang(l){
+  lang=l;
+  saveGame();
+  update();
+}
+
+function loadGame(){
+  const save=localStorage.getItem("storeSave");
+  if(save){
+    const d=JSON.parse(save);
+    money=d.money;
+    inventory=d.inventory;
+    lang=d.lang || "en";
+  }
+}
+
+function saveGame(){
+  localStorage.setItem("storeSave",JSON.stringify({money,inventory,lang}));
+}
+
+function renderBuyButtons(){
+  let box=document.getElementById("buyButtons");
+  box.innerHTML="";
+  items.forEach(i=>{
+    box.innerHTML+=`<button onclick=\"buy('${i}')\">${itemNames[lang][i]} ($${buyCost[i]})</button>`;
+  });
+}
+
+function update(){
+  document.getElementById("money").innerText=money;
+
+  let inv=document.getElementById("inventory");
+  inv.innerHTML="";
+  for(let i in inventory){
+    inv.innerHTML+=`${itemNames[lang][i]}: ${inventory[i]}<br>`;
+  }
+
+  let shelves=document.getElementById("shelves");
+  shelves.innerHTML="";
+  for(let i in inventory){
+    shelves.innerHTML+=`<div class='item'>${itemNames[lang][i]}<br>${inventory[i]}</div>`;
+  }
+
+  saveGame();
+}
+
+function buy(item){
+  if(money>=buyCost[item]){
+    money-=buyCost[item];
+    inventory[item]++;
+    update();
+  }
+}
+
+function spawnCustomer(){
+  let want=items[Math.floor(Math.random()*items.length)];
+
+  let c=document.createElement("div");
+  c.className="customer";
+  c.style.left="-160px";
+  c.style.top=Math.random()*70+"%";
+  c.innerHTML=`🧍 ${itemNames[lang][want]} <button>Buy</button>`;
+
+  document.getElementById("center").appendChild(c);
+
+  let x=-160;
+  let move=setInterval(()=>{
+    x+=4;
+    c.style.left=x+"px";
+
+    if(x>300){
+      c.querySelector("button").onclick=()=>{
+        if(inventory[want]>0){
+          inventory[want]--;
+          money+=sellPrice[want];
+        }else{
+          alert("Out of stock!");
+        }
+        update();
+      };
+      clearInterval(move);
+      setTimeout(()=>c.remove(),2000);
+    }
+  },30);
+}
+
+loadGame();
+renderBuyButtons();
+update();
+setInterval(spawnCustomer,2500);
+</script>
+
+</body>
+</html>
